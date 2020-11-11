@@ -1,3 +1,4 @@
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -43,14 +44,14 @@ def freerice_game_startup():  # Argument of (chosen_category)
 
 ''' Updates 'totalRice.txt' '''
 def totalRice_update():
-	f = open("/home/kaleblub/Desktop/python/PycharmProjects/freerice/rice", 'r')
+	f = open("/home/kaleblub/Desktop/python/freerice/rice", 'r')
 	fullFile = f.read()
 	f.seek(0, os.SEEK_SET)
 	lineList = f.readlines()
 	allTotal = str(int(lineList[-1]) + grains)
 	fullFile = fullFile.replace(lineList[-1], allTotal)
 	f.close()
-	f = open("/home/kaleblub/Desktop/python/PycharmProjects/freerice/rice", 'w')
+	f = open("/home/kaleblub/Desktop/python/freerice/rice", 'w')
 	f.write(fullFile)
 	f.close()
 
