@@ -1,15 +1,22 @@
-from webdriver_manager.chrome import ChromeDriverManager
+import os
+import time
+import signal
+from math import sqrt
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-import time
-import os
-from math import sqrt
-import signal
+from selenium.webdriver.common.action_chains import ActionChains
 
 ''' ____GOALS TO HIT____
+	Randomize account creation ? Can't because 
+		Then keep account information for logins and getting totals and stuff
+		(I should test if they can find out if the accounts are bots though)
+	Search for better methods of scraping and web automation
+
+	
 	Make different options to run(ex: multiplication, english vocab, different languages, etc)
 	Make option for how many rounds to play, loop through
 		Give output of counter for correct vs wrong answers
@@ -35,12 +42,27 @@ selenium.common.exceptions.TimeoutException: Message:
 
 '''
 
-
 ''' Starts freerice.com and takes argument of which game to play and opens chosen game '''
-def freerice_game_startup():  # Argument of (chosen_category)
+def freericeGameStartup(driver):  # Argument of (chosen_category)
 	driver.implicitly_wait(30)
-	driver.get("https://beta.freerice.com/categories/multiplication-table")  # driver.get(chosen_category)
+	driver.get("https://freerice.com/profile-login")  # driver.get(chosen_category)
 	driver.implicitly_wait(30)  # Waits up to 30 seconds for page to load
+
+'''Using FR_USERNAME, FR_PASSWORD, and FR_BDAY sign into freerice'''
+def freericeSignIn(driver, config):
+	dateInput = driver.find_element_by_css_selector('input[type="text"]')
+	saveButton = driver.find_element_by_css_selector('button[class="box-button box-button-filled-green age-screen-save-button"]')
+	
+	driver.execute_script(f"document.getElementsByTagName('input')[1].setAttribute('value', {config[2]})")
+
+
+
+	# ActionChains(driver).move_to_element(dateInput).click()
+	# for i in range(len(dateInput.text)):
+	# 	dateInput.sendKeys("")
+	# 	dateInput.sendKeys(Keys.BACKSPACE)
+	# dateInput.send_keys(config[2])
+
 
 ''' Updates 'totalRice.txt' '''
 def totalRice_update():
@@ -57,7 +79,7 @@ def totalRice_update():
 
 
 ''' Get Question and Answer Buttons '''
-def get_question():
+def get_question(driver):
 	global question, answer1, answer2, answer3, answer4  # Making variables usable throughout program.
 	driver.get(driver.current_url)
 	wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "card-title")))
@@ -72,7 +94,7 @@ def get_question():
 
 
 ''' Checks the solved problem with the four answers and clicks the match '''
-def answer_checker(solution):
+def answer_checker(solution, driver):
 	if solution == answer1.text:
 		driver.execute_script("arguments[0].click();", answer1)  # Clicks button 1
 		# print(i, "out of", times, "Correct!")
@@ -89,73 +111,102 @@ def answer_checker(solution):
 		driver.execute_script("arguments[0].click();", answer1)  # Randomize click when match can't be found
 		# print("Can't Choose Answer, Default To Answer #1")
 
+"""Checks for account info in config.py file, if it's not there, 
+	prompts user to create account and input details in terminal"""
+def checkForAccount():
+	try:
+		from config import FR_USERNAME, FR_PASSWORD, FR_BDAY
+	except ImportError as IE:
+		import getpass
+		print("! You do not have an account yet, \nplease head to 'https://freerice.com/profile-register'\nand fill in the relevent information below to be stored in a config file...")
+		FR_USERNAME = input("Username/Email: ")
+		FR_PASSWORD = getpass.getpass("Password: ")
+		FR_BDAY = input("\n\n\nLastly, what is your birthday? \n*Please input as <month>/<day>/<year>\n: ")
+		f = open("config.py", "w+")
+		f.write(f"FR_USERNAME = '{FR_USERNAME}'\n")
+		f.write(f"FR_PASSWORD = '{FR_PASSWORD}'\n")
+		f.write(f"FR_BDAY = '{FR_BDAY}'\n")
+		f.close()
+		print("\n\n\n\nUser details saved in config.py\nPlease run the program again...\nShutdown.\n\n\n\n\n\n")
+	return [FR_USERNAME, FR_PASSWORD, FR_BDAY]
 
-startTime = time.time()
-# print("What FreeRice Game Should I Play?")
-# print("Multiplication Tables = mt  |  Basic Math Pre-Algebra = bm  |  Vocabulary = v")
-# game = input()
-times = input("How Many Times Should I Play The Game? ")
+def main():
+	# Before starting, check if there are account details in config.py
+	accountDetails = checkForAccount() # list
 
+	# Choose which category to choose from and play
+	print("What FreeRice Game Should I Play?")
+	print("Multiplication Tables = 'mt'  |  Basic Math Pre-Algebra = 'bm'  |  Vocabulary = 'v'")
+	game = input(": ")
+	# Choose how many times to play that category
+	times = input("How Many Times Should I Play The Game? ")
 
-chromedriver = "/home/kaleblub/Downloads/chromedriver"
-driver = webdriver.Chrome(chromedriver)  # Opens a Chrome page
-wait = WebDriverWait(driver, 50)
-# driver.implicitly_wait(30)
-# driver.get("https://beta.freerice.com/categories/basic-math-pre-algebra")
-# driver.implicitly_wait(30)  # Waits up to 30 seconds for page to load
+	chromedriver = "chromedriver"
+	driver = webdriver.Chrome(chromedriver)  # Opens a Chrome page
+	wait = WebDriverWait(driver, 50)
+	# driver.implicitly_wait(30)
+	# driver.get("https://beta.freerice.com/categories/basic-math-pre-algebra")
+	# driver.implicitly_wait(30)  # Waits up to 30 seconds for page to load
 
-freerice_game_startup()
+	# Timer to see how long playing the game takes
+	startTime = time.time()
+	freericeGameStartup(driver)
+	freericeSignIn(driver, accountDetails)
 
-''' Click 'OK' On Cookies Button '''
-cookies_button = driver.find_elements_by_xpath("/html/body/div[1]/div/div/div[2]/div[1]/button")[0]
-cookies_button.click()
-driver.implicitly_wait(30)  # Waits up to 30 seconds for page to load
+	''' Click 'OK' On Cookies Button '''
+	cookies_button = driver.find_elements_by_xpath("/html/body/div[1]/div/div/div[2]/div[1]/button")[0]
+	cookies_button.click()
+	driver.implicitly_wait(30)  # Waits up to 30 seconds for page to load
 
-correct_counter = 0
+	correct_counter = 0
 
-''' MULTIPLICATION TABLE OPTION '''
-if times == '':
-	while True:
-		try:
-			get_question()
-			solution = eval(question.text.rstrip('=').replace('x', '*'))
-			print(question.text, "=", solution)
-			print(answer1.text, answer2.text, answer3.text, answer4.text)
-			answer_checker(str(solution))
-			print("\n")
-			correct_counter = correct_counter + 1
-			print(correct_counter)
-			print("\n")
-		except KeyboardInterrupt:
-			pass
-		except TimeoutException:
-			print("Loading took too long!")
-			driver.quit()
-			pass
-else:
-	for i in range(1, int(times)+1):
-		try:
-			get_question()
-			solution = eval(question.text.rstrip('=').replace('x', '*'))
-			print(question.text, "=", solution)
-			print(answer1.text, answer2.text, answer3.text, answer4.text)
-			answer_checker(str(solution))
-			print("\n")
-			correct_counter = correct_counter + 1
-			print(correct_counter)
-			print("\n")
-		except KeyboardInterrupt:
-			pass
-		except TimeoutException:
-			print("Loading took too long!")
-			pass
+	''' MULTIPLICATION TABLE OPTION '''
+	if times == '':
+		while True:
+			try:
+				get_question(driver)
+				solution = eval(question.text.rstrip('=').replace('x', '*'))
+				print(question.text, "=", solution)
+				print(answer1.text, answer2.text, answer3.text, answer4.text)
+				answer_checker(str(solution))
+				print("\n")
+				correct_counter = correct_counter + 1
+				print(correct_counter)
+				print("\n")
+			except KeyboardInterrupt:
+				pass
+			except TimeoutException:
+				print("Loading took too long!")
+				driver.quit()
+				pass
+	else:
+		for i in range(1, int(times)+1):
+			try:
+				get_question(driver)
+				solution = eval(question.text.rstrip('=').replace('x', '*'))
+				print(question.text, "=", solution)
+				print(answer1.text, answer2.text, answer3.text, answer4.text)
+				answer_checker(str(solution), driver)
+				print("\n")
+				correct_counter = correct_counter + 1
+				print(correct_counter)
+				print("\n")
+			except KeyboardInterrupt:
+				pass
+			except TimeoutException:
+				print("Loading took too long!")
+				pass
 
-driver.quit()
-# driver.get(driver.current_url)
-grains = correct_counter * 10  # driver.find_element_by_class_name("rice-counter__value").text
-totalTime = (time.time() - startTime) / 60
-print("I played", correct_counter, "games and earned", grains, "grains of rice in", totalTime, "minutes!")
-totalRice_update()
+	driver.quit()
+	# driver.get(driver.current_url)
+	grains = correct_counter * 10  # driver.find_element_by_class_name("rice-counter__value").text
+	totalTime = (time.time() - startTime) / 60
+	print("I played", correct_counter, "games and earned", grains, "grains of rice in", totalTime, "minutes!")
+	totalRice_update()
+
+if __name__ == "__main__":
+	main()
+
 ''' 
 77010
 	BASIC MATH PRE-ALGEBRA OPTION
@@ -218,3 +269,4 @@ totalRice_update()
 	# Click Basic Math
 	driver.find_elements_by_class_name("category-image--basic-math-pre-algebra")[0].click()
 '''
+
