@@ -1,9 +1,0 @@
-selenium
-selenium.webdriver.common.by
-selenium.webdriver.support.ui
-selenium.webdriver.support
-selenium.common.exceptions
-time
-os
-signal
-math
